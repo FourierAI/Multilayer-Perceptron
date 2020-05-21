@@ -29,8 +29,12 @@ def pre_process():
     kfold_index = kf.split(data)
 
 
-def forward(num_H, x, w_1, w_2):
-    return np.tanh(x.dot(w_1)).dot(w_2)
+def forward(x, w_1, w_2):
+    zj = np.tanh(x.dot(w_1))
+    zj_one = np.append(zj, [1])
+    yk = zj_one.dot(w_2)
+
+    return yk
 
 
 def SGD():
@@ -45,18 +49,19 @@ def SGD():
         # SGD
         for i in range(len(X)):
             tk = Tn[i]
-            yk = forward(H, X[i], w_1, w_2)
+            yk = forward(X[i], w_1, w_2)
             # error = np.sum(np.power((yk - tk), 2)) * 1 / 2
             # print('Current example error:{}'.format(error))
 
             delt_k = yk - tk
-            weight_diff = w_2.dot(delt_k)
+            weight_diff = w_2[1:].dot(delt_k)
             aj = X[i].dot(w_1)
             zj = np.tanh(aj)
+            zj_one = np.append(zj, [1])
             delt_j = (1 - np.power(zj, 2)) * (weight_diff)
 
             up_wji = np.outer(X[i], delt_j)
-            up_wkj = np.outer(zj, delt_k)
+            up_wkj = np.outer(zj_one, delt_k)
 
             w_1 = w_1 - learn_rate * up_wji
             w_2 = w_2 - learn_rate * up_wkj
@@ -78,7 +83,7 @@ if __name__ == "__main__":
     # hidden node number
     H = 20
     # iterator times
-    T = 100
+    T = 200
     w_region = np.sqrt(6 / (node_input + node_output + 1))
     # column vector
 
@@ -87,7 +92,7 @@ if __name__ == "__main__":
     for train_data_index, test_data_index in kfold_index:
 
         # initialize weight
-        w_1 = np.random.uniform(-w_region, w_region, (node_input, H))
+        w_1 = np.random.uniform(-w_region, w_region, (node_input, H - 1))
         w_2 = np.random.uniform(-w_region, w_region, (H, node_output))
         w_1, w_2 = SGD()
 
@@ -98,7 +103,7 @@ if __name__ == "__main__":
         Tn_test = np.array([[1, 0] if y == 2 else [0, 1] for y in Y_test])
         Y_test_predict = []
         for x_test in X_test:
-            y_pre = forward(H, x_test, w_1, w_2)
+            y_pre = forward(x_test, w_1, w_2)
             Y_test_predict.append(y_pre)
         Y_test_predict_arr = np.array(Y_test_predict)
         Y_test_pre = [[1 if y_b > 0.5 else 0 for y_b in y] for y in Y_test_predict_arr]
